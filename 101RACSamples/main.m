@@ -505,10 +505,12 @@ void simpleConcatHot()
         }]
         take:5];
     
-    RACMulticastConnection *shared = [oneNumberEverySecondShared publish];
+    RACMulticastConnection *shared = [oneNumberEverySecond publish];
+    [shared connect];
+    RACSignal *oneNumberEverySecondHot = [shared signal];
     
     [[RACSignal
-        concat:@[oneDateEverySecond, oneNumberEverySecond]]
+        concat:@[oneDateEverySecond, oneNumberEverySecondHot]]
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
         }];
@@ -694,7 +696,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleConcat();
+        simpleConcatHot();
     }
     return 0;
 }
