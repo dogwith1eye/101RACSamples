@@ -93,6 +93,25 @@ void runAsyncFirstSubscriptionOnly() {
     NSLog(@"Main thread completed.");
 }
 
+void runAsyncEagerlyDeferred()
+{
+    NSLog(@"Shows use of startEagerly on a background thread:");
+    
+    RACSignal *mysignal = [RACSignal defer:^RACSignal *{
+        return [RACSignal startEagerlyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+            NSLog(@"Calculating...");
+            [NSThread sleepForTimeInterval:3.0f];
+            NSLog(@"Background work completed.");
+            [subscriber sendCompleted];
+        }];
+    }];
+
+    [NSThread sleepForTimeInterval:5.0f];
+
+    NSError *error;
+    [mysignal waitUntilCompleted:&error];
+}
+
 void runAsyncOnDemand() {
     RACSignal *mysignal = [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
         NSLog(@"Calculating...");
@@ -171,17 +190,113 @@ void cancelAsyncOperation()
     NSLog(@"Main thread completed.");
 }
 
+#pragma mark Creation operators
+
+void simpleReturn()
+{
+    RACSignal *oneNumber = [RACSignal return:@1];
+    [oneNumber
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [oneNumber
+        subscribeCompleted:^{
+            NSLog(@"Done!");
+        }];
+    [oneNumber
+        subscribeError:^(NSError *error) {
+            NSLog(@"%@", error);
+        }];
+}
+
+void simpleEmpty()
+{
+    RACSignal *oneNumber = [RACSignal empty];
+    [oneNumber
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [oneNumber
+        subscribeCompleted:^{
+            NSLog(@"Done!");
+        }];
+    [oneNumber
+     subscribeError:^(NSError *error) {
+         NSLog(@"%@", error);
+     }];
+}
+
+void simpleNever()
+{
+    RACSignal *oneNumber = [RACSignal never];
+    [oneNumber
+     subscribeNext:^(id x) {
+         NSLog(@"%@", x);
+     }];
+    [oneNumber
+     subscribeCompleted:^{
+         NSLog(@"Done!");
+     }];
+    [oneNumber
+     subscribeError:^(NSError *error) {
+         NSLog(@"%@", error);
+     }];
+}
+
+void simpleError()
+{
+    RACSignal *oneNumber = [RACSignal error:[NSError errorWithDomain:@"Domain" code:1 userInfo:@{}]];
+    [oneNumber
+     subscribeNext:^(id x) {
+         NSLog(@"%@", x);
+     }];
+    [oneNumber
+     subscribeCompleted:^{
+         NSLog(@"Done!");
+     }];
+    [oneNumber
+     subscribeError:^(NSError *error) {
+         NSLog(@"%@", error);
+     }];
+}
+
+void simpleCreate()
+{
+    RACSignal *oneNumber = [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [subscriber sendCompleted];
+        return [RACDisposable disposableWithBlock:^{
+            NSLog(@"Disposed");
+        }];
+    }];
+    [oneNumber
+     subscribeNext:^(id x) {
+         NSLog(@"%@", x);
+     }];
+    [oneNumber
+     subscribeCompleted:^{
+         NSLog(@"Done!");
+     }];
+    [oneNumber
+     subscribeError:^(NSError *error) {
+         NSLog(@"%@", error);
+     }];
+}
+
 #pragma mark Restriction operators
 
 void simpleFilter()
 {
-    NSDate *now = [NSDate date];
-    RACSignal *oneDateEverySecond = [RACSignal interval:1.0f onScheduler:[RACScheduler scheduler]];
-    [[oneDateEverySecond
-        filter:^BOOL(NSDate *value) {
-            NSTimeInterval interval = [value timeIntervalSinceDate:now];
-            NSLog (@"reference date was %.0f seconds ago", interval);
-            return interval < 5.0f;
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        filter:^BOOL(NSNumber *value) {
+            return [value intValue] < 5;
         }]
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
@@ -189,14 +304,432 @@ void simpleFilter()
     [NSThread sleepForTimeInterval:10.0f];
 }
 
-void simpleFilterTake()
+void simpleDistinctUntilChanged()
 {
-    RACSignal *oneDateEverySecond = [RACSignal interval:1.0f onScheduler:[RACScheduler scheduler]];
-    [[oneDateEverySecond
+    RACSignal *sameNumberEverySecond = [[[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }]
+        distinctUntilChanged];
+    
+    [sameNumberEverySecond
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+
+void simpleIgnore()
+{
+    RACSignal *oneNumberEverySecond = [[[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }]
+        ignore:@5];
+    
+    [oneNumberEverySecond
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleIgnoreValues()
+{
+    RACSignal *oneNumberEverySecond = [[[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }]
+        ignoreValues];
+    
+    [oneNumberEverySecond
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleTake()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
         take:4]
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
         }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleTakeWhile()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        takeWhileBlock:^BOOL(NSNumber *value) {
+            return [value intValue] < 5;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleTakeUntil()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        takeUntilBlock:^BOOL(NSNumber *value) {
+            return [value intValue] > 4;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleTakeLast()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[[oneNumberEverySecond
+        take:4]
+        takeLast:2]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleSkip()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        skip:4]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleSkipWhile()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        skipWhileBlock:^BOOL(NSNumber *value) {
+            return [value intValue] < 5;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleSkipUntil()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        skipUntilBlock:^BOOL(NSNumber *value) {
+            return [value intValue] > 4;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+#pragma mark Inspection Operators
+
+void simpleAny()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    [[oneNumberEverySecond
+        any:^BOOL(NSNumber *value) {
+            return [value intValue] > 5;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleAll()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@4];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        all:^BOOL(NSNumber *value) {
+            return [value intValue] < 5;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+#pragma mark Aggregation Operators
+
+void simpleAggregationWithStart()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@4];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        aggregateWithStart:@0 reduce:^id(id running, id next) {
+            int i = [running intValue] + [next intValue];
+            return [NSNumber numberWithInt:i];
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleFirst()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@4];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    NSLog(@"%@", [firstFourNumbers first]);
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleFirstOrDefault()
+{
+    RACSignal *empty = [RACSignal empty];
+    NSLog(@"%@", [empty firstOrDefault:nil]);
+}
+
+void simpleCollect()
+{
+    RACSignal *oneNumberEverySecond = [[[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }]
+        take:3];
+    [[oneNumberEverySecond
+        collect]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+#pragma mark Error Handling Operators
+
+void simpleCatch()
+{
+    RACSignal *error = [[RACSignal
+        error:[NSError errorWithDomain:@"domain" code:1 userInfo:@{}]]
+        catch:^RACSignal *(NSError *error) {
+            NSLog(@"Swallowed!");
+            return [RACSignal empty];
+        }];
+    [error
+        subscribeError:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+}
+
+void simpleCatchTo()
+{
+    RACSignal *errors = [RACSignal return:@1];
+    RACSignal *error = [[RACSignal
+        error:[NSError errorWithDomain:@"domain" code:1 userInfo:@{}]]
+        catchTo:errors];
+                            
+    [error
+        subscribeError:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+    [error
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+}
+
+void simpleFinally()
+{
+    RACSignal *oneNumber = [[RACSignal
+        return:@1]
+        finally:^{
+            NSLog(@"Finally!");
+        }];
+    RACSignal *error = [[RACSignal
+        error:[NSError errorWithDomain:@"domain" code:1 userInfo:@{}]]
+        finally:^{
+            NSLog(@"Finally!");
+        }];
+    [oneNumber
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }
+    ];
+    [error
+        subscribeError:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+}
+
+void simpleInitially()
+{
+    RACSignal *oneNumber = [[RACSignal
+        return:@1]
+        initially:^{
+            NSLog(@"Initially!");
+        }];
+    
+    RACSignal *error = [[RACSignal
+        error:[NSError errorWithDomain:@"domain" code:1 userInfo:@{}]]
+        initially:^{
+            NSLog(@"Initially!");
+        }];
+    [oneNumber
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+    [error
+        subscribeError:^(id x) {
+            NSLog(@"%@", x);
+        }
+     ];
+}
+
+void simpleTry()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@5];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        try:^BOOL(NSNumber *value, NSError *__autoreleasing *errorPtr) {
+            if ([value intValue]  > 4) return NO;
+            return YES;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleTryMap()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@5];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        tryMap:^id(NSNumber *value, NSError *__autoreleasing *errorPtr) {
+            int i = [value intValue];
+            if (i > 4) return nil;
+            return [NSNumber numberWithInt:i*i];
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    
     [NSThread sleepForTimeInterval:10.0f];
 }
 
@@ -258,7 +791,7 @@ void simpleScanAndMap()
     [NSThread sleepForTimeInterval:10.0f];
 }
 
-#pragma mark Grouping Operators
+#pragma mark Partioning Operators
 
 void simpleGroupBy()
 {
@@ -290,7 +823,7 @@ void simpleGroupBy()
 
 #pragma mark Time Related Operators
 
-void simpleBuffer()
+void simpleBufferWithTime()
 {
     RACSignal *oneNumberEverySecond = [[RACSignal
         interval:1.0f
@@ -393,6 +926,25 @@ void simpleThrottle()
     [NSThread sleepForTimeInterval:21.0f];
 }
 
+void simpleWaitUnitlCompleted()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@2];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@3];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendNext:@5];
+        [NSThread sleepForTimeInterval:1.0f];
+        [subscriber sendCompleted];
+    }];
+    NSError *error;
+    [firstFourNumbers waitUntilCompleted:&error];
+    
+    NSLog(@"End main thread");
+}
+
 #pragma mark Combination Operators
 
 void simpleMerge()
@@ -414,6 +966,78 @@ void simpleMerge()
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
         }];
+    
+    [NSThread sleepForTimeInterval:21.0f];
+}
+
+void simpleSwitch()
+{
+    RACSignal *oneNumberEveryFiveSeconds = [[RACSignal
+        interval:5.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+    
+    RACSignal *number1EverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@1 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }];
+    
+    RACSignal *number2EverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@2 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }];
+    
+    RACSignal *number3EverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@3 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }];
+
+    [[RACSignal
+         switch:oneNumberEveryFiveSeconds cases:@{@1: number1EverySecond, @2: number2EverySecond, @3: number3EverySecond} default:[RACSignal empty]]
+         subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+         }];
+    
+    [NSThread sleepForTimeInterval:21.0f];
+}
+
+void simpleIfThenElse()
+{
+    RACSignal *oneBoolEveryFiveSeconds = [[RACSignal
+        interval:5.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+            return [running intValue] % 2 == 0 ? @YES : @NO;
+        }];
+    
+    RACSignal *number1EverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@1 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }];
+    
+    RACSignal *number2EverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@2 reduce:^id(NSNumber *running, id next) {
+           return running;
+        }];
+    
+    [[RACSignal
+         if:oneBoolEveryFiveSeconds then:number1EverySecond else:number2EverySecond]
+         subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+         }];
     
     [NSThread sleepForTimeInterval:21.0f];
 }
@@ -515,7 +1139,72 @@ void simpleConcatHot()
             NSLog(@"%@", x);
         }];
     
-    [NSThread sleepForTimeInterval:21.0f];
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+void simpleThen()
+{
+    RACSignal *oneDateEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        take:3];
+
+    RACSignal *oneNumberEverySecond = [[[[[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }]
+        take:3]
+        doNext:^(id x) {
+            NSLog(@"%@", x);
+        }]
+        then:^RACSignal *{
+            return oneDateEverySecond;
+        }];
+    
+    [oneNumberEverySecond
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
+
+void simpleRepeat()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [subscriber sendNext:@2];
+        [subscriber sendNext:@3];
+        [subscriber sendNext:@4];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        repeat]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    
+    [NSThread sleepForTimeInterval:5.0f];
+}
+
+void simpleStartWith()
+{
+    RACSignal *firstFourNumbers = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        [subscriber sendNext:@1];
+        [subscriber sendNext:@2];
+        [subscriber sendNext:@3];
+        [subscriber sendNext:@4];
+        [subscriber sendCompleted];
+    }];
+    [[firstFourNumbers
+        startWith:@0]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
 }
 
 #pragma mark Sharing Operators
@@ -570,7 +1259,7 @@ void simplePublish()
     [NSThread sleepForTimeInterval:10.0f];
 }
 
-void simpleMulticast()
+void simpleMulticastReplay()
 {
     RACSignal *oneNumberEverySecond = [[RACSignal
         interval:1.0f
@@ -581,6 +1270,34 @@ void simpleMulticast()
         }];
 
     RACMulticastConnection *shared = [oneNumberEverySecond multicast:[RACReplaySubject subject]];
+    [[shared signal] subscribeNext:^(id x) {
+        NSLog(@"%@", x);
+    }];
+    [[shared signal] subscribeNext:^(id x) {
+        NSLog(@"%@", x);
+    }];
+    [shared connect];
+    
+    [NSThread sleepForTimeInterval:5.0f];
+    
+    [[shared signal] subscribeNext:^(id x) {
+        NSLog(@"%@", x);
+    }];
+    
+    [NSThread sleepForTimeInterval:5.0f];
+}
+
+void simpleMulticastBehavior()
+{
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           int i = [running intValue];
+           return [NSNumber numberWithInt:++i];
+        }];
+
+    RACMulticastConnection *shared = [oneNumberEverySecond multicast:[RACBehaviorSubject subject]];
     [[shared signal] subscribeNext:^(id x) {
         NSLog(@"%@", x);
     }];
@@ -696,7 +1413,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleConcatHot();
+        simpleCollect();
     }
     return 0;
 }
