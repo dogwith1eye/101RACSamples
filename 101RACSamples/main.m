@@ -6,72 +6,67 @@
 //  Copyright (c) 2014 DWI. All rights reserved.
 //
 
-#pragma mark Asynchronous operations
+#pragma mark Asynchronous operators
 
-void runAsyncEagerly()
+void simpleStartEagerly()
 {
-    NSLog(@"Shows use of startEagerly on a background thread:");
-    
     [RACSignal startEagerlyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"From background thread. Does not block main thread.");
-        NSLog(@"Calculating...");
+        NSLog(@"Calculating");
         [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
+        NSLog(@"Completed");
     }];
-    NSLog(@"Main thread completed.");
+    NSLog(@"Main thread completed");
     [NSThread sleepForTimeInterval:5.0f];
 }
 
-void runAsyncLazilyNeverStarts()
+void simpleStartLazily()
 {
-    NSLog(@"Shows use of startLazily on a background thread:");
-    
     [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"From background thread. Does not block main thread.");
-        NSLog(@"Calculating...");
+        NSLog(@"Calculating");
         [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
+        NSLog(@"Completed");
     }];
-    NSLog(@"Main thread completed.");
+    NSLog(@"Main thread completed");
     [NSThread sleepForTimeInterval:5.0f];
-}
-
-void runAsyncLazilyNeverCompletes()
-{
-    NSLog(@"Shows use of startLazily on a background thread:");
     
-    RACSignal *mysignal = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"From background thread. Does not block main thread.");
-        NSLog(@"Calculating...");
-        [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
-    }];
-    NSError *error;
-    [mysignal waitUntilCompleted:&error];
-    NSLog(@"Main thread completed.");
-}
-
-void runAsyncLazily()
-{
-    NSLog(@"Shows use of startLazily on a background thread:");
+    NSLog(@"Work only starts when subscribed to");
     
-    RACSignal *mysignal = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"From background thread. Does not block main thread.");
-        NSLog(@"Calculating...");
+    RACSignal *signal = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        NSLog(@"Calculating");
         [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
+        NSLog(@"Completed");
         [subscriber sendCompleted];
     }];
+    
     NSError *error;
-    [mysignal waitUntilCompleted:&error];
-    NSLog(@"Main thread completed.");
+    [signal waitUntilCompleted:&error];
+    NSLog(@"Main thread completed");
 }
 
-void runAsyncFirstSubscriptionOnly() {
+void simpleDefer()
+{
+    RACSignal *mysignal = [RACSignal defer:^RACSignal *{
+        return [RACSignal startEagerlyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+            NSLog(@"Calculating");
+            [NSThread sleepForTimeInterval:3.0f];
+            NSLog(@"Completed");
+            [subscriber sendCompleted];
+        }];
+    }];
+    NSLog(@"Main thread completed");
+    [NSThread sleepForTimeInterval:5.0f];
+    
+    NSLog(@"We've turned our hot signal into a cold signal and it will not start until subscribed to");
+    
+    NSError *error;
+    [mysignal waitUntilCompleted:&error];
+}
+
+void simpleStartLazilyRunsForFirstSubscriptionOnly() {
     RACSignal *mysignal = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"Calculating...");
+        NSLog(@"Calculating");
         [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
+        NSLog(@"Completed");
         [subscriber sendCompleted];
     }];
     [mysignal subscribeCompleted:^{
@@ -82,33 +77,14 @@ void runAsyncFirstSubscriptionOnly() {
     }];
     NSError *error;
     [mysignal waitUntilCompleted:&error];
-    NSLog(@"Main thread completed.");
+    NSLog(@"Main thread completed");
 }
 
-void runAsyncEagerlyDeferred()
-{
-    NSLog(@"Shows use of startEagerly on a background thread:");
-    
-    RACSignal *mysignal = [RACSignal defer:^RACSignal *{
-        return [RACSignal startEagerlyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-            NSLog(@"Calculating...");
-            [NSThread sleepForTimeInterval:3.0f];
-            NSLog(@"Background work completed.");
-            [subscriber sendCompleted];
-        }];
-    }];
-
-    [NSThread sleepForTimeInterval:5.0f];
-
-    NSError *error;
-    [mysignal waitUntilCompleted:&error];
-}
-
-void runAsyncOnDemand() {
+void simpleCreateSignalRunsForEachSubscription() {
     RACSignal *mysignal = [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
-        NSLog(@"Calculating...");
+        NSLog(@"Calculating");
         [NSThread sleepForTimeInterval:3.0f];
-        NSLog(@"Background work completed.");
+        NSLog(@"Completed");
         [subscriber sendCompleted];
         return [RACDisposable disposableWithBlock:^{
             NSLog(@"Disposed");
@@ -120,45 +96,10 @@ void runAsyncOnDemand() {
     [mysignal subscribeCompleted:^{
         NSLog(@"Done 2!");
     }];
-    NSLog(@"Main thread completed.");
+    NSLog(@"Main thread completed");
 }
 
-void parallelExecution()
-{
-    RACSignal *signalA = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"Executing first on thread: %@", [NSThread currentThread]);
-        [subscriber sendNext:@"ReturnA"];
-        [subscriber sendCompleted];
-    }];
-    
-    RACSignal *signalB = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"Executing first on thread: %@", [NSThread currentThread]);
-        [subscriber sendNext:@"ReturnB"];
-        [subscriber sendCompleted];
-    }];
-    
-    RACSignal *signalC = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
-        NSLog(@"Executing first on thread: %@", [NSThread currentThread]);
-        [subscriber sendNext:@"ReturnC"];
-        [subscriber sendCompleted];
-    }];
-    [[RACSignal
-        combineLatest:@[signalA, signalB, signalC]
-        reduce:^id(NSString *resulta, NSString *resultb, NSString *resultc) {
-            NSLog(@"%@", resulta);
-            NSLog(@"%@", resultb);
-            NSLog(@"%@", resultc);
-            return nil;
-        }]
-        subscribeCompleted:^{
-            NSLog(@"Done!");
-        }];
-    
-    NSLog(@"Main thread completed.");
-    [NSThread sleepForTimeInterval:5.0f];
-}
-
-void cancelAsyncOperation()
+void simpleDisposeToCancelOperation()
 {
     RACSignal *mysignal = [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
         NSOperationQueue *op = [[NSOperationQueue alloc] init];
@@ -171,6 +112,7 @@ void cancelAsyncOperation()
         }];
         return [RACDisposable disposableWithBlock:^{
             [op cancelAllOperations];
+            NSLog(@"Disposed");
         }];
     }];
     RACDisposable *subscription = [mysignal subscribeNext:^(id x) {
@@ -178,7 +120,7 @@ void cancelAsyncOperation()
     }];
     [NSThread sleepForTimeInterval:5.0f];
     [subscription dispose];
-    [NSThread sleepForTimeInterval:3.0f];
+    [NSThread sleepForTimeInterval:5.0f];
     NSLog(@"Main thread completed.");
 }
 
@@ -1453,6 +1395,8 @@ void simpleStartWith()
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
         }];
+    
+    [NSThread sleepForTimeInterval:5.0f];
 }
 
 #pragma mark Side effects operators
@@ -1783,6 +1727,7 @@ void simpleDeliverOn()
     [firstThreeNumbers
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
+            NSLog(@"%@", [NSThread currentThread]);
         }];
     
     NSLog(@"Main thread completed.");
@@ -1793,7 +1738,17 @@ void simpleDeliverOn()
         deliverOn:[RACScheduler scheduler]]
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
+            NSLog(@"%@", [NSThread currentThread]);
         }];
+    
+    NSLog(@"Main thread completed.");
+    [firstThreeNumbers waitUntilCompleted:&error];
+
+    [firstThreeNumbers
+     subscribeNext:^(id x) {
+         NSLog(@"%@", x);
+         NSLog(@"%@", [NSThread currentThread]);
+     }];
     
     NSLog(@"Main thread completed.");
     [firstThreeNumbers waitUntilCompleted:&error];
@@ -1805,7 +1760,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleSubscribeOn();
+        simpleDeliverOn();
     }
     return 0;
 }
