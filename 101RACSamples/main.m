@@ -225,8 +225,7 @@ void simpleFilter()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         filter:^BOOL(NSNumber *value) {
@@ -262,8 +261,7 @@ void simpleIgnore()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         ignore:@5];
     
@@ -280,8 +278,7 @@ void simpleIgnoreValues()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         ignoreValues];
     
@@ -298,8 +295,7 @@ void simpleTake()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         take:4]
@@ -315,8 +311,7 @@ void simpleTakeWhile()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         takeWhileBlock:^BOOL(NSNumber *value) {
@@ -334,8 +329,7 @@ void simpleTakeUntil()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         takeUntilBlock:^BOOL(NSNumber *value) {
@@ -378,8 +372,7 @@ void simpleTakeLast()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[[oneNumberEverySecond
         take:4]
@@ -396,8 +389,7 @@ void simpleSkip()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         skip:4]
@@ -413,8 +405,7 @@ void simpleSkipWhile()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         skipWhileBlock:^BOOL(NSNumber *value) {
@@ -432,8 +423,7 @@ void simpleSkipUntil()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         skipUntilBlock:^BOOL(NSNumber *value) {
@@ -453,8 +443,7 @@ void simpleAny()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         any:^BOOL(NSNumber *value) {
@@ -544,8 +533,7 @@ void simpleCollect()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         take:3];
     [[oneNumberEverySecond
@@ -562,8 +550,7 @@ void simpleToArray()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         take:3];
     
@@ -750,8 +737,7 @@ void simpleScan()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [oneNumberEverySecond
         subscribeNext:^(id x) {
@@ -761,14 +747,38 @@ void simpleScan()
     [NSThread sleepForTimeInterval:10.0f];
 }
 
+void simpleReduceEach()
+{
+    RACSignal *oneDateEverySecond = [RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]];
+
+    RACSignal *oneNumberEverySecond = [[RACSignal
+        interval:1.0f
+        onScheduler:[RACScheduler scheduler]]
+        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+           return @(running.unsignedIntegerValue + 1);
+        }];
+    
+    [[[RACSignal
+        zip:@[oneDateEverySecond, oneNumberEverySecond]]
+        reduceEach:^(NSDate *date, NSNumber *number){
+            return number;
+        }]
+        subscribeNext:^(id x) {
+            NSLog(@"%@", x);
+        }];
+    
+    [NSThread sleepForTimeInterval:21.0f];
+}
+
 void simpleMaterialize()
 {
      RACSignal *oneNumberEverySecond = [[[RACSignal
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         materialize];
     [oneNumberEverySecond
@@ -786,8 +796,7 @@ void simpleDematerialize()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         materialize]
         dematerialize];
@@ -805,8 +814,7 @@ void simpleNot()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             return [value intValue] % 2 == 0 ? [NSNumber numberWithBool:YES] : [NSNumber numberWithBool:NO];
@@ -826,8 +834,7 @@ void simpleAnd()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             return [value intValue] % 2 == 0 ? [NSNumber numberWithBool:YES] : [NSNumber numberWithBool:NO];
@@ -837,8 +844,7 @@ void simpleAnd()
         interval:3.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             return [value intValue] % 2 == 0 ? [NSNumber numberWithBool:YES] : [NSNumber numberWithBool:NO];
@@ -861,8 +867,7 @@ void simpleOr()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             return [value intValue] % 2 == 0 ? [NSNumber numberWithBool:YES] : [NSNumber numberWithBool:NO];
@@ -872,8 +877,7 @@ void simpleOr()
         interval:3.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             return [value intValue] % 2 == 0 ? [NSNumber numberWithBool:YES] : [NSNumber numberWithBool:NO];
@@ -898,8 +902,7 @@ void simpleGroupBy()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         map:^id(NSNumber *value) {
             NSString *oddOrEven = [value intValue] % 2 == 0 ? @"EVEN" : @"ODD";
@@ -928,8 +931,7 @@ void simpleBufferWithTime()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     [[oneNumberEverySecond
         bufferWithTime:5.0f onScheduler:[RACScheduler scheduler]]
@@ -946,8 +948,7 @@ void simpleDelay()
         interval:5.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     //Instant Echo
     [oneNumberEveryFiveSeconds
@@ -988,8 +989,7 @@ void simpleSample()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     RACSignal *oneDateEveryFiveSeconds = [RACSignal interval:5.0f onScheduler:[RACScheduler scheduler]];
     [[oneNumberEverySecond
@@ -1006,8 +1006,7 @@ void simpleThrottle()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     
     RACSignal *oneDateEveryTwoSeconds = [RACSignal interval:2.0f onScheduler:[RACScheduler scheduler]];
@@ -1031,8 +1030,7 @@ void simpleTimeout()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     
     [[oneNumberEverySecond
@@ -1074,8 +1072,7 @@ void simpleMerge()
         interval:5.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
 
     [[RACSignal
@@ -1166,8 +1163,7 @@ void simpleSwitch()
         interval:5.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     
     RACSignal *number1EverySecond = [[RACSignal
@@ -1242,8 +1238,7 @@ void simpleZip()
         interval:5.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
 
     [[RACSignal
@@ -1265,8 +1260,7 @@ void simpleCombineLatest()
         interval:5.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     
     [[RACSignal
@@ -1289,8 +1283,7 @@ void simpleConcat()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         take:3];
     
@@ -1314,8 +1307,7 @@ void simpleConcatHot()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         take:5];
     
@@ -1343,8 +1335,7 @@ void simpleThen()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         take:3]
         doNext:^(id x) {
@@ -1409,8 +1400,7 @@ void simpleDoNext()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         doNext:^(id x) {
             currentNumber = x;
@@ -1483,8 +1473,7 @@ void simplePublish()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
     
     // Each subscription starts a new sequence
@@ -1504,8 +1493,7 @@ void simplePublish()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
 
     RACMulticastConnection *shared = [oneNumberEverySecondShared publish];
@@ -1533,8 +1521,7 @@ void simpleMulticastReplay()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
 
     RACMulticastConnection *shared = [oneNumberEverySecond multicast:[RACReplaySubject subject]];
@@ -1561,8 +1548,7 @@ void simpleMulticastBehavior()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }];
 
     RACMulticastConnection *shared = [oneNumberEverySecond multicast:[RACBehaviorSubject subject]];
@@ -1589,8 +1575,7 @@ void simpleReplay()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         replay];
 
@@ -1616,8 +1601,7 @@ void simpleReplayLast()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         replayLast];
 
@@ -1643,8 +1627,7 @@ void simpleReplayLazily()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         replay];
     
@@ -1661,8 +1644,7 @@ void simpleReplayLazily()
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
         scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
-           int i = [running intValue];
-           return [NSNumber numberWithInt:++i];
+           return @(running.unsignedIntegerValue + 1);
         }]
         replayLazily];
     
@@ -1760,7 +1742,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleDeliverOn();
+        simpleReduceEach();
     }
     return 0;
 }
