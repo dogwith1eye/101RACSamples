@@ -4,7 +4,7 @@
 
 ## Setup
 
-To setup the 101RACSamples
+To setup 101RACSamples:
 
  1. Make sure cocoa pods is [installed] (http://guides.cocoapods.org/using/getting-started.html)
  1. Open terminal and run 'pod install' from the folder with the xcodeproj file
