@@ -77,6 +77,29 @@ void simpleStartLazilyRunsForFirstSubscriptionOnly() {
     }];
     NSError *error;
     [mysignal waitUntilCompleted:&error];
+    
+    RACSignal *myresult = [RACSignal startLazilyWithScheduler:[RACScheduler scheduler] block:^(id<RACSubscriber> subscriber) {
+        NSLog(@"Calculating");
+        [NSThread sleepForTimeInterval:3.0f];
+        NSLog(@"Completed");
+        [subscriber sendNext:@1];
+        [subscriber sendCompleted];
+    }];
+    [myresult subscribeNext:^(id x) {
+        NSLog(@"%@", x);
+    }];
+    [myresult subscribeCompleted:^{
+        NSLog(@"Done 1!");
+    }];
+    [myresult subscribeNext:^(id x) {
+        NSLog(@"%@", x);
+    }];
+    [myresult subscribeCompleted:^{
+        NSLog(@"Done 2!");
+    }];
+    NSError *resulterror;
+    [myresult waitUntilCompleted:&resulterror];
+
     NSLog(@"Main thread completed");
 }
 
@@ -1742,7 +1765,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleReduceEach();
+        simpleCreateSignalRunsForEachSubscription();
     }
     return 0;
 }
