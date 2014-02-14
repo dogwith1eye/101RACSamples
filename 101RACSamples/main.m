@@ -122,6 +122,28 @@ void simpleCreateSignalRunsForEachSubscription() {
     NSLog(@"Main thread completed");
 }
 
+void simpleCreateSignalRunsForEachSubscriptionAndDoesNotBlock() {
+    RACSignal *mysignal = [[RACSignal
+        createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+            NSLog(@"Calculating");
+            [NSThread sleepForTimeInterval:3.0f];
+            NSLog(@"Completed");
+            [subscriber sendCompleted];
+            return [RACDisposable disposableWithBlock:^{
+                NSLog(@"Disposed");
+            }];
+        }]
+        subscribeOn:[RACScheduler scheduler]];
+    [mysignal subscribeCompleted:^{
+        NSLog(@"Done 1!");
+    }];
+    [mysignal subscribeCompleted:^{
+        NSLog(@"Done 2!");
+    }];
+    NSLog(@"Main thread completed");
+    [NSThread sleepForTimeInterval:10.0f];
+}
+
 void simpleDisposeToCancelOperation()
 {
     RACSignal *mysignal = [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
@@ -751,7 +773,7 @@ void simpleMap()
             NSLog(@"%@", x);
         }
      ];
-    [NSThread sleepForTimeInterval:10.0f];
+    [NSThread sleepForTimeInterval:5.0f];
 }
 
 void simpleScan()
@@ -759,7 +781,7 @@ void simpleScan()
     RACSignal *oneNumberEverySecond = [[RACSignal
         interval:1.0f
         onScheduler:[RACScheduler scheduler]]
-        scanWithStart:@0 reduce:^id(NSNumber *running, id next) {
+        scanWithStart:@0 reduce:^id(NSNumber *running, NSDate *next) {
            return @(running.unsignedIntegerValue + 1);
         }];
     [oneNumberEverySecond
@@ -767,7 +789,7 @@ void simpleScan()
             NSLog(@"%@", x);
         }
      ];
-    [NSThread sleepForTimeInterval:10.0f];
+    [NSThread sleepForTimeInterval:5.0f];
 }
 
 void simpleReduceEach()
@@ -1003,7 +1025,7 @@ void simpleInterval()
         subscribeNext:^(id x) {
             NSLog(@"%@", x);
      }];
-    [NSThread sleepForTimeInterval:21.0f];
+    [NSThread sleepForTimeInterval:5.0f];
 }
 
 void simpleSample()
@@ -1765,7 +1787,7 @@ int main(int argc, const char * argv[])
 {
 
     @autoreleasepool {
-        simpleCreateSignalRunsForEachSubscription();
+        simpleScan();
     }
     return 0;
 }
